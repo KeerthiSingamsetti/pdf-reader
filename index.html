@@ -105,7 +105,6 @@
     const audioPlayer = document.getElementById("audioPlayer");
 
     const API_ENDPOINT = "https://bqbbfiaib6.execute-api.ap-south-1.amazonaws.com/default/generatePresignedURL";
-    const BUCKET = "upload-file-bucket-appsdc";
 
     dropArea.addEventListener("click", () => fileInput.click());
     dropArea.addEventListener("dragover", e => {
@@ -134,26 +133,25 @@
           method: "POST",
           body: JSON.stringify({ filename: file.name }),
         });
-        const { url } = await res.json();
+
+        const { uploadURL, mp3URL } = await res.json();
 
         status.textContent = "Uploading PDF...";
-        await fetch(url, {
+        await fetch(uploadURL, {
           method: "PUT",
           body: file,
           headers: { "Content-Type": "application/pdf" },
         });
 
         status.textContent = "Processing... Please wait.";
-        const mp3Key = file.name.replace(/\.pdf$/, ".mp3");
-        const mp3Url = `https://${BUCKET}.s3.ap-south-1.amazonaws.com/${mp3Key}`;
 
         let retries = 20;
         const interval = setInterval(async () => {
-          const response = await fetch(mp3Url, { method: "HEAD" });
+          const response = await fetch(mp3URL, { method: "HEAD" });
           if (response.ok) {
             clearInterval(interval);
             status.textContent = "Conversion complete! Enjoy your audio.";
-            audioPlayer.src = mp3Url;
+            audioPlayer.src = mp3URL;
             player.classList.remove("hidden");
           } else if (--retries <= 0) {
             clearInterval(interval);
