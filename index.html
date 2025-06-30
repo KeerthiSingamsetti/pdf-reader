@@ -89,12 +89,6 @@
         <h2 class="text-xl font-semibold mb-2">🔊 Audio Output:</h2>
         <audio id="audioPlayer" controls class="w-full rounded shadow"></audio>
       </div>
-
-      <div id="downloadBtnDiv" class="hidden text-center mt-4">
-        <a id="downloadBtn" class="btn-primary text-white px-6 py-2 rounded-full font-semibold inline-block" download>
-          <i class="fas fa-download mr-2"></i>Download Audio
-        </a>
-      </div>
     </div>
 
     <footer class="mt-12 text-center text-sm text-gray-500">
@@ -134,9 +128,9 @@
 
       status.textContent = "Requesting upload URL...";
       player.classList.add("hidden");
-      document.getElementById("downloadBtnDiv").classList.add("hidden");
 
       try {
+        // STEP 1: Get pre-signed URL from Lambda
         const res = await fetch(API_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -144,11 +138,10 @@
         });
 
         const result = await res.json();
-        console.log("Lambda response:", result);
-
-        const uploadUrl = result.uploadURL; // ✅ CORRECTED LINE
+        const uploadUrl = result.url;
         if (!uploadUrl) throw new Error("No upload URL returned");
 
+        // STEP 2: Upload PDF to S3
         status.textContent = "Uploading PDF...";
         await fetch(uploadUrl, {
           method: "PUT",
@@ -156,6 +149,7 @@
           headers: { "Content-Type": "application/pdf" },
         });
 
+        // STEP 3: Wait for the .mp3 to be generated
         status.textContent = "Processing... Please wait.";
         const mp3Key = file.name.replace(/\.pdf$/, ".mp3");
         const mp3Url = https://${BUCKET}.s3.ap-south-1.amazonaws.com/${mp3Key};
@@ -168,8 +162,6 @@
             status.textContent = "Conversion complete! 🎧";
             audioPlayer.src = mp3Url;
             player.classList.remove("hidden");
-            document.getElementById("downloadBtn").href = mp3Url;
-            document.getElementById("downloadBtnDiv").classList.remove("hidden");
           } else if (--retries <= 0) {
             clearInterval(interval);
             status.textContent = "Failed to generate audio. Please try again.";
