@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,10 +90,16 @@
         <h2 class="text-xl font-semibold mb-2">🔊 Audio Output:</h2>
         <audio id="audioPlayer" controls class="w-full rounded shadow"></audio>
       </div>
+
+      <div id="downloadBtnDiv" class="hidden text-center mt-4">
+        <a id="downloadBtn" class="btn-primary text-white px-6 py-2 rounded-full font-semibold inline-block" download>
+          <i class="fas fa-download mr-2"></i>Download Audio
+        </a>
+      </div>
     </div>
 
     <footer class="mt-12 text-center text-sm text-gray-500">
-      <p>&copy; 2025 PDFAudio. Made with <i class="fas fa-heart text-red-500"></i> by Keer</p>
+      <p>&copy; 2025 PDFAudio. Made with <i class="fas fa-heart text-red-500"></i> by TEAM:217</p>
     </footer>
   </div>
 
@@ -105,6 +112,7 @@
     const audioPlayer = document.getElementById("audioPlayer");
 
     const API_ENDPOINT = "https://bqbbfiaib6.execute-api.ap-south-1.amazonaws.com/default/generatePresignedURL";
+    const BUCKET = "upload-file-bucket-appsdc";
 
     dropArea.addEventListener("click", () => fileInput.click());
     dropArea.addEventListener("dragover", e => {
@@ -127,39 +135,48 @@
 
       status.textContent = "Requesting upload URL...";
       player.classList.add("hidden");
+      document.getElementById("downloadBtnDiv").classList.add("hidden");
 
       try {
         const res = await fetch(API_ENDPOINT, {
           method: "POST",
-          body: JSON.stringify({ filename: file.name }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name })
         });
 
-        const { uploadURL, mp3URL } = await res.json();
+        const result = await res.json();
+        const uploadUrl = result.url;
+        if (!uploadUrl) throw new Error("No upload URL returned");
 
         status.textContent = "Uploading PDF...";
-        await fetch(uploadURL, {
+        await fetch(uploadUrl, {
           method: "PUT",
           body: file,
           headers: { "Content-Type": "application/pdf" },
         });
 
         status.textContent = "Processing... Please wait.";
+        const mp3Key = file.name.replace(/\.pdf$/, ".mp3");
+        const mp3Url = `https://${BUCKET}.s3.ap-south-1.amazonaws.com/${mp3Key}`;
 
         let retries = 20;
         const interval = setInterval(async () => {
-          const response = await fetch(mp3URL, { method: "HEAD" });
-          if (response.ok) {
+          const headRes = await fetch(mp3Url, { method: "HEAD" });
+          if (headRes.ok) {
             clearInterval(interval);
-            status.textContent = "Conversion complete! Enjoy your audio.";
-            audioPlayer.src = mp3URL;
+            status.textContent = "Conversion complete! 🎧";
+            audioPlayer.src = mp3Url;
             player.classList.remove("hidden");
+            document.getElementById("downloadBtn").href = mp3Url;
+            document.getElementById("downloadBtnDiv").classList.remove("hidden");
           } else if (--retries <= 0) {
             clearInterval(interval);
             status.textContent = "Failed to generate audio. Please try again.";
           }
         }, 4000);
+
       } catch (err) {
-        console.error(err);
+        console.error("Upload error:", err);
         status.textContent = "Error during upload or conversion.";
       }
     });
