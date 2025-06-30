@@ -6,24 +6,6 @@
   <title>PDFAudio | Convert PDF to Audio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#7e22ce',
-            secondary: '#3b0764',
-            glass: 'rgba(30, 30, 46, 0.7)',
-            dark: '#121212'
-          },
-          boxShadow: {
-            'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-            'soft': '0 4px 20px rgba(126, 34, 206, 0.3)'
-          }
-        }
-      }
-    }
-  </script>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
@@ -90,7 +72,6 @@
         <audio id="audioPlayer" controls class="w-full rounded shadow"></audio>
       </div>
 
-      <!-- 🎯 Download Button Here -->
       <div id="downloadBtnDiv" class="hidden text-center mt-4">
         <a id="downloadBtn" class="btn-primary text-white px-6 py-2 rounded-full font-semibold inline-block" download>
           <i class="fas fa-download mr-2"></i>Download Audio
@@ -147,10 +128,15 @@
         });
 
         const result = await res.json();
+        console.log("Lambda response:", result);
+
         const uploadUrl = result.uploadURL;
         const mp3Url = result.mp3URL;
 
-        if (!uploadUrl) throw new Error("No upload URL returned");
+        if (!uploadUrl || !mp3Url) throw new Error("Invalid response from backend");
+
+        console.log("Uploading to:", uploadUrl);
+        console.log("Expecting MP3 at:", mp3Url);
 
         status.textContent = "Uploading PDF...";
         await fetch(uploadUrl, {
@@ -169,7 +155,6 @@
             status.textContent = "Conversion complete! 🎧";
             audioPlayer.src = mp3Url;
             player.classList.remove("hidden");
-
             downloadBtn.href = mp3Url;
             downloadBtnDiv.classList.remove("hidden");
           } else if (--retries <= 0) {
